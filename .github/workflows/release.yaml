@@ -1,0 +1,49 @@
+name: Release (PyPI)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: self-hosted
+    concurrency:
+      group: release
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          ssh-key: ${{ secrets.DEPLOY_KEY }}
+
+      - name: Set up Git identity and remote
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin git@github.com:Cledar/sync-env-file.git
+
+      - name: Set up uv (Python 3.12)
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install semantic-release
+        run: |
+          uv tool install python-semantic-release
+
+      - name: Run semantic release version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          semantic-release version
+
+      - name: Publish to PyPI with uv
+        run: |
+          uv publish
