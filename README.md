@@ -16,21 +16,47 @@ No bespoke scripts, no copy-pasted vault logic.
 
 ## Installation
 
-From PyPI:
+### Recommended: `uvx` (no project dependency)
+
+Run in any project directory without adding `sync-env-file` to `pyproject.toml` or running `uv sync`:
+
+```bash
+uvx sync-env-file init
+uvx sync-env-file
+```
+
+`uvx` installs the CLI in an isolated environment for that invocation. Your project stays free of this package as a dependency.
+
+Requires [uv](https://docs.astral.sh/uv/) and Python 3.12.7+.
+
+### Other install options
+
+From PyPI (global or user install):
 
 ```bash
 pip install sync-env-file
 ```
 
-Using uv:
+As a project dependency with uv:
 
 ```bash
 uv add sync-env-file
 ```
 
-Requires Python 3.12.7+, [chezmoi](https://www.chezmoi.io/), and the [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/).
+Requires Python 3.12.7+, [chezmoi](https://www.chezmoi.io/), and the [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/) (external tools — not installed by the package or `uvx`).
 
 ## Quick start
+
+With `uvx` (no project dependency):
+
+```bash
+uvx sync-env-file init
+# Edit .chezmoi/chezmoi.toml and .chezmoi/private_dot_env.tmpl
+az login
+uvx sync-env-file
+```
+
+If installed via `pip` or `uv add`, omit the `uvx` prefix:
 
 ```bash
 sync-env-file init
