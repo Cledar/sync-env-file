@@ -14,7 +14,7 @@ Do not include secrets, `.env` contents, or Key Vault values in issue reports.
 
 ## Development setup
 
-Requires Python 3.12.7+ and [uv](https://docs.astral.sh/uv/).
+Requires Python 3.9+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone git@github.com:Cledar/sync-env-file.git

@@ -4,7 +4,7 @@ End-to-end walkthrough for `sync-env-file` assuming the package is on public PyP
 
 ## Prerequisites
 
-- Python 3.12.7, [uv](https://docs.astral.sh/uv/), [chezmoi](https://www.chezmoi.io/), Azure CLI
+- Python 3.9+, [uv](https://docs.astral.sh/uv/), [chezmoi](https://www.chezmoi.io/), Azure CLI
 - `sync-env-file` on PyPI: `pip install sync-env-file`
 - RBAC read access to secrets in your Key Vault
 

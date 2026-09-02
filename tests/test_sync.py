@@ -35,7 +35,7 @@ def test_run_sync_success(
 ) -> None:
     _scaffold_chezmoi(tmp_path)
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(tools.shutil, "which", _fake_which)
+    monkeypatch.setattr("sync_env_file.tools.shutil.which", _fake_which)
     _patch_az_logged_in(monkeypatch)
 
     def ok_chezmoi(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
@@ -53,7 +53,7 @@ def test_run_sync_propagates_chezmoi_failure(
 ) -> None:
     _scaffold_chezmoi(tmp_path)
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(tools.shutil, "which", _fake_which)
+    monkeypatch.setattr("sync_env_file.tools.shutil.which", _fake_which)
     _patch_az_logged_in(monkeypatch)
 
     def fail_chezmoi(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
@@ -70,7 +70,7 @@ def test_run_sync_missing_chezmoi_config(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(tools.shutil, "which", _fake_which)
+    monkeypatch.setattr("sync_env_file.tools.shutil.which", _fake_which)
     _patch_az_logged_in(monkeypatch)
     assert run_sync() == 2
     assert "chezmoi.toml not found" in capsys.readouterr().err
@@ -102,7 +102,7 @@ def test_build_chezmoi_apply_command_uses_repo_paths(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(tools.shutil, "which", _fake_which)
+    monkeypatch.setattr("sync_env_file.tools.shutil.which", _fake_which)
     chezmoi_dir = tmp_path / ".chezmoi"
     chezmoi_dir.mkdir()
     (chezmoi_dir / "chezmoi.toml").write_text('[azureKeyVault]\ndefaultVault = "x"\n', encoding="utf-8")
@@ -119,8 +119,8 @@ def test_tool_command_wraps_az_cmd_on_windows(monkeypatch: pytest.MonkeyPatch) -
     def fake_which(name: str) -> str | None:
         return az_path if name == "az" else None
 
-    monkeypatch.setattr(tools.os, "name", "nt")
-    monkeypatch.setattr(tools.shutil, "which", fake_which)
+    monkeypatch.setattr(tools, "_running_on_windows", lambda: True)
+    monkeypatch.setattr("sync_env_file.tools.shutil.which", fake_which)
     assert tools.tool_command("az", "account", "show") == [
         "cmd.exe",
         "/c",
@@ -136,8 +136,8 @@ def test_tool_command_uses_resolved_exe_on_windows(monkeypatch: pytest.MonkeyPat
     def fake_which(name: str) -> str | None:
         return chezmoi_path if name == "chezmoi" else None
 
-    monkeypatch.setattr(tools.os, "name", "nt")
-    monkeypatch.setattr(tools.shutil, "which", fake_which)
+    monkeypatch.setattr(tools, "_running_on_windows", lambda: True)
+    monkeypatch.setattr("sync_env_file.tools.shutil.which", fake_which)
     assert tools.tool_command("chezmoi", "apply") == [chezmoi_path, "apply"]
 
 

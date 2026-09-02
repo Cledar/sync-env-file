@@ -27,7 +27,7 @@ uvx sync-env-file
 
 `uvx` installs the CLI in an isolated environment for that invocation. Your project stays free of this package as a dependency.
 
-Requires [uv](https://docs.astral.sh/uv/) and Python 3.12.7+.
+Requires [uv](https://docs.astral.sh/uv/). `uvx` manages an isolated Python environment (3.9+); your project does not need this package as a dependency.
 
 ### Other install options
 
@@ -43,7 +43,7 @@ As a project dependency with uv:
 uv add sync-env-file
 ```
 
-Requires Python 3.12.7+, [chezmoi](https://www.chezmoi.io/), and the [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/) (external tools — not installed by the package or `uvx`).
+Requires Python 3.9+, [chezmoi](https://www.chezmoi.io/), and the [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/) (external tools — not installed by the package or `uvx`).
 
 ## Quick start
 

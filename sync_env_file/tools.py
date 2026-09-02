@@ -16,8 +16,13 @@ def resolve_tool(name: str) -> str:
     return path
 
 
+def _running_on_windows() -> bool:
+    return os.name == "nt"
+
+
 def tool_command(name: str, *args: str) -> list[str]:
     executable = resolve_tool(name)
-    if os.name == "nt" and Path(executable).suffix.lower() in WINDOWS_SCRIPT_SUFFIXES:
+    suffix = Path(executable).suffix.lower()
+    if _running_on_windows() and suffix in WINDOWS_SCRIPT_SUFFIXES:
         return ["cmd.exe", "/c", executable, *args]
     return [executable, *args]

@@ -5,7 +5,7 @@ description = "Generate local .env from chezmoi templates and Azure Key Vault"
 authors = [{ name = "Cledar" }]
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-requires-python = ">=3.12.7"
+requires-python = ">=3.9"
 readme = "README.md"
 dependencies = []
 
@@ -52,7 +52,7 @@ ignore = ["D203", "D213", "D103"]
 
 [tool.mypy]
 strict = true
-python_version = "3.12"
+python_version = "3.9"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

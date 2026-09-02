@@ -25,7 +25,7 @@ def test_package_sources_exclude_forbidden_tokens() -> None:
     paths = [repo_root / "sync_env_file", repo_root / "README.md"]
     for path in paths:
         if path.is_dir():
-            files = path.rglob("*")
+            files = list(path.rglob("*"))
         else:
             files = [path]
         for file in files:

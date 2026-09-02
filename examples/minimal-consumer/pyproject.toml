@@ -2,7 +2,7 @@
 name = "minimal-consumer-example"
 version = "0.0.0"
 description = "Example consumer for sync-env-file (not published)"
-requires-python = ">=3.12.7"
+requires-python = ">=3.9"
 dependencies = [
     "sync-env-file>=0.1.0",
 ]
