@@ -29,13 +29,16 @@ def run_init(*, force: bool = False, target_dir: Path | None = None) -> int:
         chezmoi_dir / "private_dot_env.tmpl": _template_text("private_dot_env.tmpl"),
     }
 
+    if not force:
+        for path in targets:
+            if path.exists():
+                print(
+                    f"{LOG_PREFIX} {path} already exists (use --force to overwrite)",
+                    file=sys.stderr,
+                )
+                return 2
+
     for path, content in targets.items():
-        if path.exists() and not force:
-            print(
-                f"{LOG_PREFIX} {path} already exists (use --force to overwrite)",
-                file=sys.stderr,
-            )
-            return 2
         path.write_text(content, encoding="utf-8")
         print(f"{LOG_PREFIX} wrote {path.relative_to(root)}")
 

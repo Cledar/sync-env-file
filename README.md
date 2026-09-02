@@ -41,6 +41,11 @@ uv run ruff format --check .
 uv run mypy .
 ```
 
+Release workflows (`release.yaml`, semantic-version dry-run) expect a `DEPLOY_KEY`
+repository secret (SSH deploy key with write access) so semantic-release can push
+version commits and tags. Configure it in the GitHub repo settings before the
+first manual release run.
+
 ## License
 
 Mozilla Public License 2.0 — see [LICENSE](LICENSE).

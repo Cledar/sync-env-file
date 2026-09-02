@@ -21,6 +21,17 @@ def test_init_refuses_overwrite_without_force(tmp_path: Path, monkeypatch: pytes
     assert run_init() == 2
 
 
+def test_init_does_not_partially_write_when_one_file_exists(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    chezmoi_dir = tmp_path / ".chezmoi"
+    chezmoi_dir.mkdir()
+    (chezmoi_dir / "chezmoi.toml").write_text("existing", encoding="utf-8")
+    assert run_init() == 2
+    assert not (chezmoi_dir / "private_dot_env.tmpl").exists()
+
+
 def test_init_force_overwrites(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
     assert run_init() == 0

@@ -1,0 +1,1 @@
+"""Packaged chezmoi scaffold templates."""
