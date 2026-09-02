@@ -2,6 +2,18 @@
 
 Generate a local `.env` from chezmoi templates and Azure Key Vault secrets.
 
+## Why it exists
+
+Local development often needs a `.env` file with a mix of committed defaults and secrets from a vault. Teams usually solve this with one-off shell scripts that are hard to reuse across projects.
+
+`sync-env-file` provides a small, generic CLI that:
+
+- Keeps templates under version control via [chezmoi](https://www.chezmoi.io/)
+- Pulls secrets from [Azure Key Vault](https://learn.microsoft.com/en-us/azure/key-vault/) at render time
+- Writes a single repo-root `.env` with one command
+
+No bespoke scripts, no copy-pasted vault logic.
+
 ## Installation
 
 From PyPI:
@@ -27,9 +39,60 @@ az login
 sync-env-file
 ```
 
+## API overview
+
+| Command | Description |
+| --- | --- |
+| `sync-env-file` | Same as `sync-env-file sync` |
+| `sync-env-file sync` | Render `.env` from `.chezmoi/` templates (requires `az login`) |
+| `sync-env-file init` | Scaffold `.chezmoi/chezmoi.toml`, `private_dot_env.tmpl`, and `.gitignore` entries |
+| `sync-env-file init --force` | Overwrite existing scaffold files |
+
+Exit codes: `0` on success, non-zero on tool errors (missing chezmoi/az, no active Azure account, chezmoi apply failure).
+
+## Configuration
+
+After `init`, edit two files under `.chezmoi/`:
+
+### `chezmoi.toml`
+
+Sets the default Key Vault name:
+
+```toml
+[azureKeyVault]
+defaultVault = "your-vault-name"
+```
+
+`sync-env-file` passes `--config`, `--source`, and `--destination` to chezmoi so paths stay repo-relative.
+
+### `private_dot_env.tmpl`
+
+Defines the rendered `.env` content. Use chezmoi's `azureKeyVault` template function for secrets:
+
+```text
+APP_BASE_URL=https://api.example.com
+APP_API_KEY={{ azureKeyVault "example-api-key" | quote }}
+```
+
+See [examples/minimal-consumer/.chezmoi/private_dot_env.tmpl](examples/minimal-consumer/.chezmoi/private_dot_env.tmpl) for additional patterns (connection strings, optional passthrough variables).
+
 ## Extended example
 
 See [examples/minimal-consumer/](examples/minimal-consumer/) for a full PyPI-first consumer project (not shipped in the wheel).
+
+## Limitations
+
+- Requires **chezmoi** and **Azure CLI** installed and on `PATH`
+- Secrets are fetched from **Azure Key Vault only** (no AWS/GCP vaults)
+- Renders a single target file: repo-root **`.env`**
+- Requires an active Azure account with RBAC read access to the configured vault
+- Does not manage chezmoi installation, vault provisioning, or secret rotation
+
+## Roadmap
+
+- [ ] Initial public release on PyPI
+- [ ] Optional support for additional secret backends (if demand exists)
+- [ ] Richer scaffold templates for common connection-string patterns
 
 ## Development
 
@@ -46,6 +109,14 @@ repository secret (SSH deploy key with write access) so semantic-release can pus
 version commits and tags. Configure it in the GitHub repo settings before the
 first manual release run.
 
+## How to contribute
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for issue reporting, development setup, and pull request guidelines.
+
+## Maintainers
+
+- [@arog-lahcim](https://github.com/arog-lahcim) — primary maintainer
+
 ## License
 
-Mozilla Public License 2.0 — see [LICENSE](LICENSE).
+Apache License 2.0 — see [LICENSE](LICENSE).
