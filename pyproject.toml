@@ -34,9 +34,11 @@ build-backend = "hatchling.build"
 packages = ["sync_env_file"]
 
 [tool.hatch.build.targets.sdist]
-exclude = [
-    "examples",
-    "tests",
+only-include = [
+    "sync_env_file",
+    "pyproject.toml",
+    "README.md",
+    "LICENSE",
 ]
 
 [tool.ruff]
