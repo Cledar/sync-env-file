@@ -12,6 +12,11 @@ dependencies = []
 [project.scripts]
 sync-env-file = "sync_env_file.cli:main"
 
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
+
 [dependency-groups]
 dev = [
     "pytest>=8.2.2",
