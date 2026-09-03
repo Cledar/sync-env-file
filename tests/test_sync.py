@@ -12,10 +12,6 @@ from sync_env_file.sync import run_sync
 from sync_env_file import tools
 
 
-def _fake_which(name: str) -> str:
-    return f"/usr/bin/{name}"
-
-
 def _scaffold_chezmoi(tmp_path: Path) -> None:
     chezmoi_dir = tmp_path / ".chezmoi"
     chezmoi_dir.mkdir()
@@ -35,7 +31,6 @@ def test_run_sync_success(
 ) -> None:
     _scaffold_chezmoi(tmp_path)
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr("sync_env_file.tools.shutil.which", _fake_which)
     _patch_az_logged_in(monkeypatch)
 
     def ok_chezmoi(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
@@ -53,7 +48,6 @@ def test_run_sync_propagates_chezmoi_failure(
 ) -> None:
     _scaffold_chezmoi(tmp_path)
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr("sync_env_file.tools.shutil.which", _fake_which)
     _patch_az_logged_in(monkeypatch)
 
     def fail_chezmoi(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
@@ -70,7 +64,6 @@ def test_run_sync_missing_chezmoi_config(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr("sync_env_file.tools.shutil.which", _fake_which)
     _patch_az_logged_in(monkeypatch)
     assert run_sync() == 2
     assert "chezmoi.toml not found" in capsys.readouterr().err
@@ -98,11 +91,7 @@ def test_repo_root_finds_chezmoi(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     assert root == tmp_path
 
 
-def test_build_chezmoi_apply_command_uses_repo_paths(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr("sync_env_file.tools.shutil.which", _fake_which)
+def test_build_chezmoi_apply_command_uses_repo_paths(tmp_path: Path) -> None:
     chezmoi_dir = tmp_path / ".chezmoi"
     chezmoi_dir.mkdir()
     (chezmoi_dir / "chezmoi.toml").write_text('[azureKeyVault]\ndefaultVault = "x"\n', encoding="utf-8")
