@@ -13,7 +13,7 @@ env:
 
 jobs:
   ruff-format:
-    runs-on: self-hosted
+    runs-on: arc-runner-set-cledar
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -28,7 +28,7 @@ jobs:
         run: uv run ruff format --check --diff .
 
   ruff-check:
-    runs-on: self-hosted
+    runs-on: arc-runner-set-cledar
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -43,7 +43,7 @@ jobs:
         run: uv run ruff check .
 
   mypy:
-    runs-on: self-hosted
+    runs-on: arc-runner-set-cledar
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -59,7 +59,7 @@ jobs:
 
   test:
     name: test (Python ${{ matrix.python-version }})
-    runs-on: self-hosted
+    runs-on: arc-runner-set-cledar
     needs: [ruff-format, ruff-check, mypy]
     strategy:
       fail-fast: false
@@ -86,7 +86,7 @@ jobs:
           path: coverage.xml
 
   package-artifacts:
-    runs-on: self-hosted
+    runs-on: arc-runner-set-cledar
     needs: [ruff-format, ruff-check, mypy]
     steps:
       - uses: actions/checkout@v6

@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: self-hosted
+    runs-on: arc-runner-set-cledar
     concurrency:
       group: release
       cancel-in-progress: false
