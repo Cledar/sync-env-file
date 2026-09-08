@@ -232,6 +232,7 @@ jobs:
           from pathlib import Path
 
           root = Path("release-artifacts")
+          dist_root = root / "dist"
           manifest = json.loads((root / "release-manifest.json").read_text())
           repository = os.environ["GITHUB_REPOSITORY"]
           release_tag = os.environ["RELEASE_TAG"]
@@ -249,10 +250,15 @@ jobs:
           if release_tag != f"v{manifest.get('version')}":
               raise SystemExit("release tag does not match the manifest version")
 
-          wheels = sorted(root.glob("*.whl"))
-          sdists = sorted(root.glob("*.tar.gz"))
+          wheels = sorted(dist_root.glob("*.whl"))
+          sdists = sorted(dist_root.glob("*.tar.gz"))
           distributions = wheels + sdists
-          if len(list(root.iterdir())) != 3 or len(wheels) != 1 or len(sdists) != 1:
+          artifact_files = {
+              path.relative_to(root).as_posix()
+              for path in root.rglob("*")
+              if path.is_file()
+          }
+          if len(artifact_files) != 3 or len(wheels) != 1 or len(sdists) != 1:
               raise SystemExit(
                   "artifact must contain one wheel, one sdist, and one manifest"
               )
@@ -267,6 +273,11 @@ jobs:
               item["name"]: {"size": item["size"], "sha256": item["sha256"]}
               for item in manifest.get("files", [])
           }
+          expected_layout = {"release-manifest.json"} | {
+              f"dist/{name}" for name in expected_files
+          }
+          if artifact_files != expected_layout:
+              raise SystemExit("downloaded artifact layout does not match the manifest")
           if actual_files != expected_files:
               raise SystemExit("downloaded distributions do not match the approved manifest")
 
@@ -306,5 +317,5 @@ jobs:
           uv publish
           --trusted-publishing always
           --publish-url https://upload.pypi.org/legacy/
-          release-artifacts/*.whl
-          release-artifacts/*.tar.gz
+          release-artifacts/dist/*.whl
+          release-artifacts/dist/*.tar.gz
