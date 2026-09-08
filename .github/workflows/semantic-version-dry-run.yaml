@@ -1,0 +1,40 @@
+name: Semantic Version Dry Run
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  semantic-version-dry-run:
+    runs-on: arc-runner-set-cledar
+    concurrency:
+      group: semantic-version-dry-run
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+          ref: ${{ github.head_ref }}
+
+      - name: Set up uv (Python 3.12)
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install semantic-release
+        run: |
+          uv tool install python-semantic-release==10.6.2
+
+      - name: Run semantic release version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          semantic-release version --print

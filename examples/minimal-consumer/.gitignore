@@ -1,0 +1,5 @@
+.env
+.env.*
+.venv/
+.chezmoi/chezmoistate.boltdb
+__pycache__/

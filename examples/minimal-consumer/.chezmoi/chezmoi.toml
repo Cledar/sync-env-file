@@ -1,0 +1,4 @@
+# sourceDir and destDir are passed on the CLI by sync-env-file (repo-relative paths only).
+
+[azureKeyVault]
+defaultVault = "your-vault-name"

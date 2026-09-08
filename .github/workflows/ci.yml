@@ -1,0 +1,101 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: main
+    tags:
+      - '*'
+  pull_request:
+
+env:
+  UV_CACHE_DIR: .cache/uv
+  PIP_CACHE_DIR: .cache/pip
+
+jobs:
+  ruff-format:
+    runs-on: arc-runner-set-cledar
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12.7"
+      - name: Install Ruff
+        run: |
+          pip install uv
+          uv sync --no-dev --frozen
+          uv add ruff
+      - name: Run Ruff Format
+        run: uv run ruff format --check --diff .
+
+  ruff-check:
+    runs-on: arc-runner-set-cledar
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12.7"
+      - name: Install Ruff
+        run: |
+          pip install uv
+          uv sync --no-dev --frozen
+          uv add ruff
+      - name: Run Ruff Check
+        run: uv run ruff check .
+
+  mypy:
+    runs-on: arc-runner-set-cledar
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12.7"
+      - name: Install uv and dependencies
+        run: |
+          pip install uv
+          uv sync --no-dev --frozen
+          uv add mypy
+      - name: Run Mypy
+        run: uv run mypy .
+
+  test:
+    name: test (Python ${{ matrix.python-version }})
+    runs-on: arc-runner-set-cledar
+    needs: [ruff-format, ruff-check, mypy]
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv and dependencies
+        run: |
+          pip install uv
+          uv sync --frozen --python ${{ matrix.python-version }}
+      - name: Run tests
+        run: |
+          uv run --python ${{ matrix.python-version }} coverage run -m pytest
+          uv run --python ${{ matrix.python-version }} coverage xml
+      - name: Upload coverage
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+  package-artifacts:
+    runs-on: arc-runner-set-cledar
+    needs: [ruff-format, ruff-check, mypy]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12.7"
+      - name: Install uv
+        run: pip install uv
+      - name: Verify PyPI wheel and sdist contents
+        run: |
+          uv build --out-dir dist-check
+          python3 scripts/check_package_artifacts.py dist-check

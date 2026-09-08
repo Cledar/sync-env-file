@@ -1,0 +1,308 @@
+name: Release (PyPI)
+run-name: PyPI release for ${{ inputs.tag }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing vX.Y.Z tag whose commit is on main
+        required: true
+        type: string
+      artifact_run_id:
+        description: Approved build-only workflow run ID; leave empty to build
+        required: false
+        default: ""
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: pypi-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Validate release request
+    runs-on: arc-runner-set-cledar
+    timeout-minutes: 5
+    steps:
+      - name: Validate workflow ref and inputs
+        env:
+          ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          if [[ "${GITHUB_REF}" != "refs/heads/main" ]]; then
+            echo "Run this workflow from main, not ${GITHUB_REF}." >&2
+            exit 1
+          fi
+          if [[ ! "${RELEASE_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "tag must look like vX.Y.Z" >&2
+            exit 1
+          fi
+          if [[ -n "${ARTIFACT_RUN_ID}" && ! "${ARTIFACT_RUN_ID}" =~ ^[0-9]+$ ]]; then
+            echo "artifact_run_id must be a numeric GitHub Actions run ID" >&2
+            exit 1
+          fi
+
+  build:
+    name: Build and check release artifacts
+    if: ${{ inputs.artifact_run_id == '' }}
+    needs: preflight
+    runs-on: arc-runner-set-cledar
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout the release tag
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+          ref: refs/tags/${{ inputs.tag }}
+
+      - name: Set up uv and Python 3.12
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Verify tag, version, and main ancestry
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          tag_commit="$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")"
+          head_commit="$(git rev-parse HEAD)"
+          package_version="$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+
+          test "${tag_commit}" = "${head_commit}"
+          test "${RELEASE_TAG}" = "v${package_version}"
+          git merge-base --is-ancestor "${head_commit}" refs/remotes/origin/main
+
+      - name: Run tests
+        run: uv run --frozen pytest
+
+      - name: Build wheel and sdist once
+        run: uv build --out-dir dist
+
+      - name: Inspect package artifacts
+        run: python scripts/check_package_artifacts.py dist
+
+      - name: Smoke-test the built wheel
+        run: |
+          smoke_env="${RUNNER_TEMP}/sync-env-file-smoke"
+          uv venv "${smoke_env}"
+          uv pip install --python "${smoke_env}/bin/python" --no-deps dist/*.whl
+          (
+            cd "${RUNNER_TEMP}"
+            "${smoke_env}/bin/sync-env-file" --help
+          )
+
+      - name: Create release manifest
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import subprocess
+          import tomllib
+          from pathlib import Path
+
+          distributions = sorted(Path("dist").glob("*.whl")) + sorted(
+              Path("dist").glob("*.tar.gz")
+          )
+          manifest = {
+              "schema_version": 1,
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "workflow": ".github/workflows/release.yaml",
+              "tag": os.environ["RELEASE_TAG"],
+              "commit": subprocess.check_output(
+                  ["git", "rev-parse", "HEAD"], text=True
+              ).strip(),
+              "version": tomllib.load(open("pyproject.toml", "rb"))["project"][
+                  "version"
+              ],
+              "files": [
+                  {
+                      "name": path.name,
+                      "size": path.stat().st_size,
+                      "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                  }
+                  for path in distributions
+              ],
+          }
+          Path("release-manifest.json").write_text(
+              json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Upload frozen release artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pypi-${{ inputs.tag }}
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+            release-manifest.json
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  publish:
+    name: Publish approved artifacts to PyPI
+    if: ${{ inputs.artifact_run_id != '' }}
+    needs: preflight
+    runs-on: arc-runner-set-cledar
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - name: Verify the approved source workflow run
+        env:
+          ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          repository = os.environ["GITHUB_REPOSITORY"]
+          run_id = os.environ["ARTIFACT_RUN_ID"]
+          request = urllib.request.Request(
+              f"https://api.github.com/repos/{repository}/actions/runs/{run_id}",
+              headers={
+                  "Accept": "application/vnd.github+json",
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              },
+          )
+          with urllib.request.urlopen(request) as response:
+              workflow_run = json.load(response)
+
+          expected = {
+              "event": "workflow_dispatch",
+              "head_branch": "main",
+              "path": ".github/workflows/release.yaml",
+              "conclusion": "success",
+          }
+          mismatches = {
+              field: {"expected": value, "actual": workflow_run.get(field)}
+              for field, value in expected.items()
+              if workflow_run.get(field) != value
+          }
+          if workflow_run.get("repository", {}).get("full_name") != repository:
+              mismatches["repository"] = {
+                  "expected": repository,
+                  "actual": workflow_run.get("repository", {}).get("full_name"),
+              }
+          if mismatches:
+              raise SystemExit(f"source workflow run is not publishable: {mismatches}")
+          PY
+
+      - name: Download approved release artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: pypi-${{ inputs.tag }}
+          path: release-artifacts
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.artifact_run_id }}
+
+      - name: Verify manifest, hashes, and immutable tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
+          from pathlib import Path
+
+          root = Path("release-artifacts")
+          manifest = json.loads((root / "release-manifest.json").read_text())
+          repository = os.environ["GITHUB_REPOSITORY"]
+          release_tag = os.environ["RELEASE_TAG"]
+          expected_header = {
+              "schema_version": 1,
+              "repository": repository,
+              "workflow": ".github/workflows/release.yaml",
+              "tag": release_tag,
+          }
+          for field, expected in expected_header.items():
+              if manifest.get(field) != expected:
+                  raise SystemExit(
+                      f"manifest {field} mismatch: {manifest.get(field)!r} != {expected!r}"
+                  )
+          if release_tag != f"v{manifest.get('version')}":
+              raise SystemExit("release tag does not match the manifest version")
+
+          wheels = sorted(root.glob("*.whl"))
+          sdists = sorted(root.glob("*.tar.gz"))
+          distributions = wheels + sdists
+          if len(list(root.iterdir())) != 3 or len(wheels) != 1 or len(sdists) != 1:
+              raise SystemExit(
+                  "artifact must contain one wheel, one sdist, and one manifest"
+              )
+          actual_files = {
+              path.name: {
+                  "size": path.stat().st_size,
+                  "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+              }
+              for path in distributions
+          }
+          expected_files = {
+              item["name"]: {"size": item["size"], "sha256": item["sha256"]}
+              for item in manifest.get("files", [])
+          }
+          if actual_files != expected_files:
+              raise SystemExit("downloaded distributions do not match the approved manifest")
+
+          headers = {
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+              "X-GitHub-Api-Version": "2022-11-28",
+          }
+
+          def github_json(path: str) -> dict:
+              request = urllib.request.Request(
+                  f"https://api.github.com/repos/{repository}/{path}", headers=headers
+              )
+              with urllib.request.urlopen(request) as response:
+                  return json.load(response)
+
+          ref = github_json(f"git/ref/tags/{urllib.parse.quote(release_tag, safe='')}")
+          target = ref["object"]
+          for _ in range(5):
+              if target["type"] == "commit":
+                  break
+              if target["type"] != "tag":
+                  raise SystemExit(f"unexpected tag target type: {target['type']}")
+              target = github_json(f"git/tags/{target['sha']}")["object"]
+          else:
+              raise SystemExit("tag indirection is too deep")
+          if target["sha"] != manifest.get("commit"):
+              raise SystemExit("tag no longer points to the approved artifact commit")
+
+          comparison = github_json(f"compare/{target['sha']}...main")
+          if comparison.get("status") not in {"ahead", "identical"}:
+              raise SystemExit("approved tag commit is no longer an ancestor of main")
+          PY
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+
+      - name: Publish with PyPI Trusted Publishing
+        run: >-
+          uv publish
+          --trusted-publishing always
+          --publish-url https://upload.pypi.org/legacy/
+          release-artifacts/*.whl
+          release-artifacts/*.tar.gz
