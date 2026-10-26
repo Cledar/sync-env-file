@@ -23,6 +23,9 @@ build/
 .DS_Store
 Thumbs.db
 
+# Local git worktrees
+.worktrees/
+
 # Test / tooling
 .pytest_cache/
 .ruff_cache/

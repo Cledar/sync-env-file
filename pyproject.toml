@@ -5,9 +5,25 @@ description = "Generate local .env from chezmoi templates and Azure Key Vault"
 authors = [{ name = "Cledar" }]
 license = "Apache-2.0"
 license-files = ["LICENSE"]
+keywords = ["dotenv", "env", "chezmoi", "azure", "key-vault"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Utilities",
+]
 requires-python = ">=3.9"
 readme = "README.md"
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/Cledar/sync-env-file"
+Source = "https://github.com/Cledar/sync-env-file"
+Issues = "https://github.com/Cledar/sync-env-file/issues"
+Changelog = "https://github.com/Cledar/sync-env-file/blob/main/CHANGELOG.md"
 
 [project.scripts]
 sync-env-file = "sync_env_file.cli:main"

@@ -1,6 +1,6 @@
 # Contributing to sync-env-file
 
-Thank you for your interest in contributing. This project follows the [Cledar Open-Source Publication Guidelines](https://app.notion.com/p/2b10f2e73c5b80d9b1a5fc7ef306a708).
+Thank you for your interest in contributing.
 
 ## Reporting issues
 
@@ -74,6 +74,41 @@ docs: clarify Azure RBAC requirements
 - No runtime dependencies beyond the Python standard library
 
 Match the style of surrounding code. Avoid unrelated refactors in the same PR.
+
+## Releasing to PyPI
+
+PyPI publication uses GitHub OIDC Trusted Publishing. The repository must not
+contain a PyPI token, password, credential-bearing URL, or writable deploy key.
+The semantic-version workflow is advisory only: it prints the proposed version
+and never commits, tags, or publishes.
+
+The release workflow is deliberately split into two manual invocations so the
+exact wheel and sdist can be reviewed before the job receives OIDC permission:
+
+1. Merge the version change to `main`, then create an immutable `vX.Y.Z` tag on
+   that reviewed commit. The tag must match `project.version` in
+   `pyproject.toml`.
+2. Run **Release (PyPI)** from `main` with the tag and leave
+   `artifact_run_id` empty. This runs tests, builds one wheel and one sdist,
+   checks their contents, smoke-tests the wheel, and uploads them with
+   `release-manifest.json`. It cannot request a PyPI OIDC token.
+3. Review that workflow run and manifest. Approval for publication must name
+   the PyPI owner, package, version, tag and commit, both artifact hashes, the
+   workflow, and the build run ID.
+4. Run the same workflow again from `main`, with the same tag and the approved
+   build run ID in `artifact_run_id`. The publish job downloads that exact
+   artifact, rechecks its manifest and hashes, verifies that the tag still
+   points to a commit on `main`, and publishes with OIDC. It never rebuilds the
+   distributions.
+
+The Trusted Publisher tuple is repository `Cledar/sync-env-file`, workflow
+`release.yaml`, with no GitHub environment. The repository is public. If the
+organization plan changes, add a protected `pypi` environment and update the
+PyPI publisher tuple in the same reviewed change before the next release.
+
+Build artifacts expire after 14 days. If an upload partially fails, stop and
+inspect PyPI before retrying. Published files cannot be overwritten; yank a bad
+release and publish a reviewed higher version instead of reusing its version.
 
 ## License
 
