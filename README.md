@@ -125,6 +125,11 @@ uv run ruff format --check .
 uv run mypy .
 ```
 
+CI and the advisory semantic-version check run on GitHub-hosted `ubuntu-latest`
+runners with read-only repository permissions. Public pull requests do not need
+access to the organization's self-hosted runners. The manual PyPI release
+workflow is managed separately; see the release instructions below.
+
 ## Releasing
 
 Releases are published to PyPI from the GitHub Actions workflow in this repository; the steps are in [CONTRIBUTING](https://github.com/Cledar/sync-env-file/blob/main/CONTRIBUTING.md#releasing-to-pypi).

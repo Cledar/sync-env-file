@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   semantic-version-dry-run:
-    runs-on: arc-runner-set-cledar
+    runs-on: ubuntu-latest
     concurrency:
       group: semantic-version-dry-run
       cancel-in-progress: false
