@@ -23,7 +23,7 @@ concurrency:
 jobs:
   preflight:
     name: Validate release request
-    runs-on: arc-runner-set-cledar
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Validate workflow ref and inputs
@@ -48,7 +48,7 @@ jobs:
     name: Build and check release artifacts
     if: ${{ inputs.artifact_run_id == '' }}
     needs: preflight
-    runs-on: arc-runner-set-cledar
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
@@ -154,7 +154,7 @@ jobs:
     name: Publish approved artifacts to PyPI
     if: ${{ inputs.artifact_run_id != '' }}
     needs: preflight
-    runs-on: arc-runner-set-cledar
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       actions: read
