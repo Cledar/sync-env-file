@@ -1,6 +1,6 @@
 [project]
 name = "sync-env-file"
-version = "0.1.0"
+version = "0.1.1"
 description = "Generate local .env from chezmoi templates and Azure Key Vault"
 authors = [{ name = "Cledar" }]
 license = "Apache-2.0"
